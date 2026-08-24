@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#041B2D">
+<meta name="robots" content="noindex,nofollow">
+<title>ダイビング復習クイズ｜西伊豆・浮島海岸</title>
+<style>
+  :root{
+    --depth: 0;
+    --ink: #EDF3F5;
+    --ink-dim: #8FB0C4;
+    --line: rgba(143,176,196,.22);
+    --ok: #35C4A8;
+    --ng: #F2705A;
+    --card: rgba(255,255,255,.05);
+    --shallow-1: #0E5C7A;
+    --shallow-2: #072C44;
+    --deep-1: #04202F;
+    --deep-2: #01080F;
+    --gauge-w: 46px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.75;
+    color:var(--ink);
+    background-color:#04202F;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* 背景は2層のグラデーションを重ね、深度に応じて上層の不透明度を上げる */
+  .bg{position:fixed; inset:0; z-index:-2; pointer-events:none}
+  .bg.shallow{background:linear-gradient(180deg,#0E5C7A 0%,#072C44 100%)}
+  .bg.deep{
+    background:linear-gradient(180deg,#04202F 0%,#01080F 100%);
+    opacity:0; transition:opacity 900ms ease;
+  }
+  .wrap{
+    padding:
+      calc(env(safe-area-inset-top) + 18px)
+      calc(var(--gauge-w) + 6px)
+      calc(env(safe-area-inset-bottom) + 28px)
+      18px;
+    max-width:640px;
+    margin:0 auto;
+  }
+
+  /* ---- 深度ゲージ（シグネチャー：進むほど深く潜る） ---- */
+  .gauge{
+    position:fixed; top:0; right:0; bottom:0; width:var(--gauge-w);
+    padding-top:env(safe-area-inset-top);
+    border-left:1px solid var(--line);
+    background:rgba(0,0,0,.16);
+    -webkit-backdrop-filter:blur(2px);
+    backdrop-filter:blur(2px);
+    z-index:5;
+  }
+  .gauge .track{position:absolute; top:calc(env(safe-area-inset-top) + 34px); bottom:34px; left:0; right:0}
+  .gauge .tick{position:absolute; left:0; right:0; border-top:1px solid var(--line)}
+  .gauge .tick span{
+    position:absolute; right:5px; top:2px;
+    font:500 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.06em; color:var(--ink-dim);
+  }
+  .gauge .marker{
+    position:absolute; left:0; right:0; height:2px; background:var(--ok);
+    box-shadow:0 0 10px rgba(53,196,168,.8);
+    transition:top 700ms cubic-bezier(.3,.7,.2,1);
+  }
+  .gauge .marker::after{
+    content:""; position:absolute; left:4px; top:-4px;
+    width:10px; height:10px; border-radius:50%;
+    background:var(--ok); box-shadow:0 0 12px rgba(53,196,168,.9);
+  }
+  .gauge .read{
+    position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:0; right:0;
+    text-align:center;
+    font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--ok); letter-spacing:.02em;
+  }
+
+  /* ---- ヘッダ ---- */
+  header{border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:22px}
+  .eyebrow{
+    font:600 11px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase;
+  }
+  h1{font-size:20px; line-height:1.5; margin:6px 0 4px; font-weight:600; letter-spacing:.01em}
+  .sub{font-size:13px; color:var(--ink-dim); margin:0}
+
+  /* ---- 問題カード ---- */
+  .meta{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.1em; color:var(--ink-dim); margin-bottom:14px;
+  }
+  .chip{border:1px solid var(--line); border-radius:999px; padding:5px 10px; font-size:11px; letter-spacing:.04em}
+  .q{font-size:19px; line-height:1.7; font-weight:600; margin:0 0 20px}
+
+  .opts{display:flex; flex-direction:column; gap:10px; list-style:none; margin:0; padding:0}
+  .opt{
+    display:flex; gap:12px; align-items:flex-start;
+    width:100%; min-height:58px; padding:15px 16px;
+    background:var(--card); color:var(--ink);
+    border:1px solid var(--line); border-radius:12px;
+    font:inherit; font-size:16px; line-height:1.6; text-align:left;
+    cursor:pointer; transition:background 160ms ease, border-color 160ms ease, transform 120ms ease;
+  }
+  .opt:active{transform:scale(.99)}
+  .opt:focus-visible{outline:2px solid var(--ok); outline-offset:2px}
+  .opt .key{
+    flex:0 0 auto; width:22px;
+    font:700 14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink-dim);
+  }
+  .opt.correct{border-color:var(--ok); background:rgba(53,196,168,.14)}
+  .opt.correct .key{color:var(--ok)}
+  .opt.wrong{border-color:var(--ng); background:rgba(242,112,90,.13)}
+  .opt.wrong .key{color:var(--ng)}
+  .opt.locked{cursor:default; opacity:.65}
+  .opt.locked.correct,.opt.locked.wrong{opacity:1}
+
+  .fb{margin-top:20px; border-left:3px solid var(--line); padding:2px 0 2px 15px; display:none}
+  .fb.show{display:block; animation:rise 320ms ease both}
+  .fb.ok{border-color:var(--ok)}
+  .fb.ng{border-color:var(--ng)}
+  .verdict{font-weight:700; font-size:15px; margin:0 0 8px}
+  .fb.ok .verdict{color:var(--ok)}
+  .fb.ng .verdict{color:var(--ng)}
+  .fb p{margin:0 0 10px; font-size:15px; color:#DCE7EC}
+  .fb p:last-child{margin-bottom:0}
+  @keyframes rise{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+
+  .next{
+    margin-top:24px; width:100%; min-height:56px;
+    background:var(--ok); color:#022; border:0; border-radius:12px;
+    font-family:inherit; font-size:17px; font-weight:700; letter-spacing:.04em;
+    cursor:pointer;
+  }
+  .next:active{opacity:.85}
+  .next.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+
+  /* ---- 結果 ---- */
+  .score{
+    font:700 64px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:-.03em; margin:8px 0 2px;
+  }
+  .score small{font-size:20px; color:var(--ink-dim); font-weight:500}
+  .bytag{margin:24px 0 0; padding:0; list-style:none; border-top:1px solid var(--line)}
+  .bytag li{
+    display:flex; justify-content:space-between; gap:12px;
+    padding:12px 0; border-bottom:1px solid var(--line); font-size:15px;
+  }
+  .bytag b{font:600 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink-dim)}
+
+  .memo{margin-top:34px; border-top:1px solid var(--line); padding-top:22px}
+  .memo h2{font-size:15px; letter-spacing:.04em; margin:0 0 14px}
+  .memo ul{margin:0; padding-left:20px}
+  .memo li{margin-bottom:9px; font-size:15px; color:#DCE7EC}
+  .foot{margin-top:34px; font-size:12px; color:var(--ink-dim); line-height:1.8}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important}
+  }
+</style>
+</head>
+<body>
+
+<div class="bg shallow"></div>
+<div class="bg deep" id="bgdeep"></div>
+
+<div class="gauge" aria-hidden="true">
+  <div class="read" id="read">0m</div>
+  <div class="track" id="track"><div class="marker" id="marker" style="top:0"></div></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Refresher / STARS OW</div>
+    <h1>ダイビング復習クイズ</h1>
+    <p class="sub">8月29日・西伊豆 浮島海岸／全<span id="total">30</span>問・4択</p>
+  </header>
+  <main id="app"><p class="sub">読み込み中です。この表示のまま変わらない場合は、Safariでファイルを開き直してください。</p></main>
+</div>
+
+<script>
+const QUESTIONS = [
+ {t:"器材",q:"器材セッティング後、タンクバルブを開ける際の正しい操作は？",
+  o:["素早く全開にし、半回転戻す","ゆっくり全開にし、残圧計の表示面を人に向けない","半分だけ開け、潜降直前に全開にする","全開にした後、必ず1/4回転閉める"],a:1,
+  e:["バルブはゆっくり全開に。急に開けると高圧空気が一気に流れ、ゲージや器材を傷めます。開ける瞬間は残圧計の文字盤を自分にも他人にも向けないこと。","「半回転戻す」は古い習慣で現在は非推奨。閉まっているのに残圧が残っていて開いていると誤認する事故につながります。全開のままでOK。","開けたらレギュレーターで2〜3回呼吸し、残圧計の針が下がらないことを必ず確認。"]},
+
+ {t:"水中生理",q:"潜降中に耳が痛くなった。正しい対処は？",
+  o:["我慢して一気に潜降し、深度を安定させる","そのままの深度で強く鼻をつまんで息を吹き込み続ける","少し浮上して痛みを取り、再度耳抜きしながらゆっくり潜降する","一度水面まで戻り、そのダイビングは中止する"],a:2,
+  e:["耳の痛みは中耳のスクイーズ。まず少し浮上して圧を抜き、耳抜きし直してからゆっくり潜降します。","耳抜きは痛くなる前に、浅いところから頻繁に。強く吹き込み続けるのは内耳障害のリスクがあります。","何度やっても抜けなければ無理せず中止。中止は最終手段であって第一選択ではありません。"]},
+
+ {t:"水中生理",q:"水深20mでBCに空気を入れて中性浮力をとった。そのまま浮上を始めるとどうなるか？",
+  o:["浮力は変わらない","空気が膨張して浮力が増し、浮上速度が加速する","空気が圧縮されて浮力が減り、沈み始める","水温が下がるため浮力が減る"],a:1,
+  e:["圧力が下がるとBC内の空気は膨張し、浮力が増えて浮上が加速します。放置すると急浮上＝肺の過膨張障害や減圧症の原因に。","浮上中はBCの空気を小刻みに抜きながら、速度をコントロールします。","ブランク明けで最も事故につながりやすいのがこの浮力コントロール。浮上開始前に一度深呼吸して、あわてないこと。"]},
+
+ {t:"プランとルール",q:"安全停止は、どの深度で何分行うか？",
+  o:["3mで5分","5mで3分","10mで3分","5mで1分"],a:1,
+  e:["水深5mで3分間。無減圧潜水可能時間の範囲内でも、すべてのダイビングで行うことが推奨されています。","潜降ロープなどがあればつかまって、リラックスして3分過ごします。","安全停止や減圧停止にかかる時間は、潜水時間には含めません。"]},
+
+ {t:"プランとルール",q:"STARSの基準で、浮上速度の上限は？",
+  o:["1分間に10mを超えない","1分間に18mを超えない","1分間に30mを超えない","速度の決まりはなく、息を吐き続ければよい"],a:0,
+  e:["1分間に10mを超えない速度で浮上します。指導団体によって数値が異なるので、今回はこの基準で。","目安は自分が吐いた泡の小さいものより遅く。ゆっくり過ぎて困ることはありません。","浮上中は左手でBCの排気バルブ、右手をゲージ、視線は上、が基本形。"]},
+
+ {t:"水中生理",q:"肺の過膨張障害の最大の原因は？",
+  o:["深く潜りすぎること","浮上時に息を止めること","空気を吸いすぎること","冷たい水で肺が縮むこと"],a:1,
+  e:["浮上時に息を止めると、膨張した空気の逃げ場がなくなり肺胞が破れます。","水深10m→水面のような浅い場所ほど体積変化が大きく、実はごく浅い深度でも起こります。","鉄則は「絶対に息を止めない」。レギュレーターをくわえていないときは、少しずつ息を吐き続けます。"]},
+
+ {t:"水中生理",q:"エアーエンボリズム（空気塞栓症）が疑われる人への対応として正しいのは？",
+  o:["水中に戻して再圧をかける","水を大量に飲ませる","呼吸を確保して安静にし、酸素を投与して救急へ連絡する","患部を冷やして様子をみる"],a:2,
+  e:["呼吸の確保と安静、可能なら100%酸素の投与、そして速やかに救急・専門医療機関へ。再圧治療が必要になります。","水中に戻す再圧は絶対にしません。悪化と二次事故のもとです。","浮上直後の意識障害・けいれん・血の混じった泡は危険サイン。西伊豆なら搬送先の確認をインストラクターに任せましょう。"]},
+
+ {t:"水中生理",q:"減圧症の直接的な原因は？",
+  o:["体内に溶けた窒素が気泡になること","体内の酸素が不足すること","二酸化炭素がたまること","体温が下がりすぎること"],a:0,
+  e:["圧力下で体内組織に溶け込んだ窒素が、急な減圧で気泡となり、血管や組織を圧迫・閉塞します。","予防は、無減圧潜水可能時間を守る／ゆっくり浮上する／安全停止する／深い方から浅い方へ潜る、の積み重ね。","脱水・疲労・寝不足・二日酔い・冷え・激しい運動はリスクを高めます。前夜の酒は控えめに。"]},
+
+ {t:"ダイブテーブル",q:"ダイビング終了後の飛行機搭乗・高所移動について、日本の研究者が勧めている目安は？",
+  o:["6時間以上あける","12時間あければ常に安全","24時間以内は避ける","水面休息を1時間とれば問題ない"],a:2,
+  e:["ダイブテーブル上の飛行機搭乗可能時間は反復記号によって変わりますが、日本の研究者は24時間以内の搭乗・高所移動を避けるよう勧めています。","海抜600m以上の高所移動も同じ扱い。伊豆からの帰りに峠越えの道を使う場合は要注意です。","36時間以内に連続して潜った場合は、各ダイビング後の搭乗可能時間のうち最も長いものを採用します。"]},
+
+ {t:"水中生理",q:"タンクに充填されている空気の組成は？",
+  o:["酸素100%","酸素約21%・窒素約79%","酸素約50%・窒素約50%","酸素約79%・窒素約21%"],a:1,
+  e:["中身は普通の空気。酸素が約21%、窒素が約79%です。","窒素は体内に蓄積して減圧症の原因になり、深く潜れば窒素酔い（ガス中毒）の原因にもなります。","酸素100%のタンクでは潜れません。深度によっては酸素中毒を起こすためです。"]},
+
+ {t:"水中生理",q:"水深20mでの絶対圧は？",
+  o:["2気圧","2.5気圧","3気圧","4気圧"],a:2,
+  e:["水深10mごとに1気圧増えます。水面の1気圧＋20mぶんの2気圧＝3気圧。","計算式は「水深÷10＋1」。30mなら4気圧です。","空気の消費量は絶対圧に比例するので、20mでは水面の3倍の速さでタンクが減ります。"]},
+
+ {t:"水中生理",q:"水面で1リットルの空気は、水深30mではおよそ何リットルになるか？",
+  o:["1/2","1/3","1/4","1/5"],a:2,
+  e:["30mは絶対圧4気圧。体積は圧力に反比例するので1/4になります。","逆に30mから水面に上がれば体積は4倍。浮上時に息を止めてはいけない理由がここにあります。","体積変化の割合が最も大きいのは水面近くの浅い場所です。浮上の最後こそ慎重に。"]},
+
+ {t:"水中生理",q:"窒素酔い（ガス中毒）について正しいのは？",
+  o:["浅い深度ほど起こりやすい","深い深度で起こり、浅い深度に戻れば回復する","一度なると数日間症状が続く","水温が高いほど起こりやすい"],a:1,
+  e:["深度が深くなるほど起こりやすく、酒に酔ったような多幸感・判断力低下が出ます。浅い深度に戻れば通常は回復します。","自分では気づきにくいのが厄介な点。バディの様子がおかしければ浅い方へ誘導します。","疲労・寝不足・二日酔い・不安は発症を早めます。"]},
+
+ {t:"水中生理",q:"空気を節約しようとして呼吸を止め気味にする「スキップ呼吸」は、なぜ危険か？",
+  o:["タンクの空気が汚れるから","二酸化炭素が体内にたまり、頭痛や意識障害を起こすから","窒素の蓄積が2倍になるから","レギュレーターが凍結するから"],a:1,
+  e:["二酸化炭素が排出されず体内に蓄積し、頭痛・息苦しさ・判断力低下、ひどいと意識障害を起こします。","水中の呼吸は「ゆっくり深く、吐き切る」。止めるのではなく、ゆっくりにするのが正解です。","エア持ちを良くしたいなら、余計な動きを減らし中性浮力を安定させるのが近道。"]},
+
+ {t:"水中生理",q:"水中では色はどう見えるか？",
+  o:["赤系の色が浅い深度から失われ、青っぽく見える","青系の色が先に失われ、赤っぽく見える","すべての色が均等に暗くなる","黄色が最も早く失われる"],a:0,
+  e:["赤系が最初に吸収され、深くなるほど青一色に近づきます。","深い場所で赤い生物や自分の血の色が黒っぽく見えるのはこのため。水中ライトを当てると本来の色が戻ります。","写真を撮るならライトかストロボがあると別世界になります。"]},
+
+ {t:"水中環境",q:"水中で音を聞いたとき、正しいのは？",
+  o:["空気中より伝わりにくく、ほとんど聞こえない","空気中より速く伝わり、音の来た方向が分かりにくい","空気中と同じように方向が分かる","低い音だけが伝わる"],a:1,
+  e:["水中では音が空気中よりずっと速く伝わるため、左右の耳に届く時間差がほぼなくなり、方向が判別しにくくなります。","ボートのエンジン音が聞こえても方向は分からない前提で行動を。浮上時は必ず上を見て、手を伸ばして周囲を確認します。","合図はタンクを叩く音などを使いますが、伝わったかどうかは目視で確認するのが確実。"]},
+
+ {t:"水中環境",q:"岸から離れる速い流れ（離岸流）に流されたときの対処は？",
+  o:["流れに逆らって全力で岸へ泳ぐ","岸と平行に泳いで流れから外れる","BCの空気を抜いて沈み、底を歩く","フィンを脱いで浮いて待つ"],a:1,
+  e:["流れに正面から逆らうと体力を消耗するだけです。岸と平行に移動して流れの帯から抜け、それから岸へ向かいます。","まずBCに給気して浮力を確保し、落ち着くこと。呼吸を整えるのが最優先です。","浮島海岸のようなビーチでは、当日の潮とうねりの状況をインストラクターに必ず確認しましょう。"]},
+
+ {t:"プランとルール",q:"エントリー直前のバディチェックで確認しないものは？",
+  o:["BCの給排気と残圧","ウエイトとベルトのバックル位置","オクトパスと予備の位置","バディの認定カードの取得年月日"],a:3,
+  e:["確認するのはBC・ウエイト・ベルトやストラップ・空気（残圧とレギュレーター）・その他器材、そして緊急時の手順です。","特に重要なのは、バディのウエイトベルトの外し方とオクトパスの位置。緊急時に手が届く場所を体で覚えておきます。","認定カードは受付時の確認事項で、エントリー直前のチェック項目ではありません。"]},
+
+ {t:"プランとルール",q:"ファンダイビングの残圧管理として一般的に適切なのは？",
+  o:["空になるまで潜り、なくなったら浮上する","残圧50気圧程度を目安に浮上を開始する","半分になったら折り返し、残圧10気圧で水面に戻る","残圧はガイド任せでよい"],a:1,
+  e:["50気圧前後を浮上開始の目安にし、水面に戻った時点で余裕が残っている状態を作ります。","往復のポイントでは「タンクの空気を1/3で折り返す」考え方も使われます。深度が深いほど消費は速くなります。","残圧はこまめに自分で確認し、ガイドやバディにサインで伝えます。10年ぶりなら消費が早くなりがちなので、早めの申告を。"]},
+
+ {t:"プランとルール",q:"水中で親指を立てて上に向けるサインの意味は？",
+  o:["OK・問題なし","浮上しよう","空気が残り少ない","すごい・よかった"],a:1,
+  e:["親指を上に向けるのは「浮上しよう」。陸上のグッドサインと混同しやすい代表例です。","OKは親指と人差し指で輪を作るサイン。称賛のつもりで親指を立てると浮上開始と受け取られます。","「何かおかしい」は手のひらを下に向けて左右に振るサイン。迷ったら大げさなくらいはっきり出しましょう。"]},
+
+ {t:"スキル",q:"水中でバディが空気を使い切った合図を出した。基本的な対応は？",
+  o:["すぐに二人で全力で浮上する","自分のオクトパス（予備の第2ステージ）を渡し、一緒にゆっくり浮上する","バディのBCに空気を入れて先に浮上させる","水面まで交互に一本のレギュレーターを使う"],a:1,
+  e:["オクトパスを渡し、互いにつかまって落ち着かせ、通常の速度で一緒に浮上します。","レギュレーターを交互に使うバディブリージングは難度が高く、オクトパスがあるなら使いません。","浮上中も息を止めないこと。渡すときは自分のレギュレーターを確実に確保してから。"]},
+
+ {t:"器材",q:"ウエットスーツが保温できる仕組みは？",
+  o:["完全に水の侵入を防ぐから","内部に入ったわずかな水を体温で温め、その層が断熱するから","素材が発熱するから","水圧で体表の血流が増えるから"],a:1,
+  e:["生地の気泡による断熱に加え、内部のわずかな水を体温で温めた層が保温します。ぶかぶかだと水が入れ替わって保温性が落ちます。","一方ドライスーツは水が入らず、中の空気が断熱します。給排気の操作が別途必要です。","8月の西伊豆でも、水底や2本目は冷えます。フードベストや長めのインナーがあると快適。"]},
+
+ {t:"器材",q:"ダイビング終了後、レギュレーターを真水で洗うときの注意点は？",
+  o:["ファーストステージのキャップを外し、内部までよく洗う","ダストキャップを確実に付け、内部に水を入れない","洗剤を使ってホースまで洗う","熱いお湯につけて塩を溶かす"],a:1,
+  e:["ファーストステージのダストキャップを確実に装着し、高圧側に水を入れないこと。内部が濡れると腐食や故障の原因になります。","パージボタンは押さないまま、真水につけて振り洗いします。押すと水が内部に流れ込みます。","乾燥後は直射日光を避けて保管。定期的なオーバーホールも忘れずに。"]},
+
+ {t:"スキル",q:"適正ウエイト量の確認方法として正しいのは？",
+  o:["水面で普通に息を吸ったとき目の高さで浮き、吐くと沈み始める","水面で息を吸っても沈む","水面で息を吐いても胸まで浮く","水底で動かずにいられる量ならよい"],a:0,
+  e:["BCの空気を抜き、普通に息を吸った状態で水面に目の高さで浮き、息を吐くとゆっくり沈み始めるのが適正です。","重すぎると常にBCで浮力を補うことになり、空気の消費が増えて浮力も不安定になります。","10年ぶりなら以前と体型・スーツが変わっているはずです。1本目の前に必ず取り直しましょう。"]},
+
+ {t:"スキル",q:"水中で中性浮力の細かい調整をするときの基本は？",
+  o:["BCの給排気だけで調整する","呼吸の量で調整する","フィンキックの強さで調整する","ウエイトを外して調整する"],a:1,
+  e:["大まかな調整はBC、細かい上下は呼吸です。吸えばゆっくり浮き、吐けばゆっくり沈みます。","呼吸の効果は数秒遅れて出ます。反応を待たずに追加操作をすると上下動が大きくなります。","中性浮力が安定すると、エア持ちも底の生物へのダメージも大きく改善します。"]},
+
+ {t:"水中環境",q:"伊豆でよく見る危険生物への対処として正しいのは？",
+  o:["ウニやオコゼは毒がないので素手で扱ってよい","むやみに触れず、素肌を露出しない装備で予防する","攻撃してくる魚は追い払う","刺されたら真水で強くこすって毒を出す"],a:1,
+  e:["伊豆ではガンガゼ（長い棘のウニ）、オコゼ、ゴンズイ、クラゲ、ウツボなどが該当します。基本は触らない・近づきすぎない・素肌を出さない。","中性浮力を保って底に触れないことが最大の予防策になります。手を突きたくなる場面を作らないこと。","刺傷・咬傷が起きたらその場で自己判断せず、必ずインストラクターに申告してください。"]},
+
+ {t:"スキル",q:"ビーチエントリーで波打ち際を歩くときの基本は？",
+  o:["フィンを履いて前向きに歩く","フィンを持ち、波に対して横向きに立って進む","フィンを履き、波の方を見ながら後ろ向きに歩く","BCの空気を全部抜いて低い姿勢で進む"],a:2,
+  e:["浅い波打ち際ではフィンを履いたまま後ろ向きに、波を見ながら進むのが基本。前向きだとフィンが引っかかって転びます。","波に対して横を向くと、うねりで足をすくわれます。常に波と正対する姿勢を保ちます。","BCには少し空気を入れておくと、転んでも浮力が助けになります。レギュレーターは口にくわえたまま。"]},
+
+ {t:"スキル",q:"ロープを使わないフリー潜降で正しいのは？",
+  o:["頭を下にして一気に潜る","足を下にして、耳抜きしながら少しずつ潜る","BCを完全に膨らませたまま潜る","レギュレーターを外して息を止める"],a:1,
+  e:["足を下にした姿勢で、こまめに耳抜きしながらゆっくり潜ります。バディと目線を合わせ、深度を揃えて降りること。","BCの空気を少し抜いて沈み始めたら、あとは呼吸で速度を調整。沈みすぎる前にBCへ少量給気します。","水底が見えない場所では、着底直前の減速を早めに始めます。砂を巻き上げると視界が一気に落ちます。"]},
+
+ {t:"ダイブテーブル",q:"1日に複数本潜るときの、最も安全な順序は？",
+  o:["浅い方から深い方へ","深い方から浅い方へ","毎回同じ深度で","順序は関係ない"],a:1,
+  e:["深い方から浅い方へ潜るのが原則。体内に蓄積した窒素を効率よく排出でき、減圧症のリスクを下げられます。","水面休息時間を十分にとることも同じくらい重要です。","反復潜水では残留窒素があるため、2本目の無減圧潜水可能時間は1本目より短くなります。"]},
+
+ {t:"プランとルール",q:"当日、寝不足・二日酔い・軽い風邪気味だった場合の判断として適切なのは？",
+  o:["浅い深度なら問題ないので予定通り潜る","市販薬を飲んで潜る","インストラクターに正直に申告し、中止や内容変更を相談する","水中で体調を確かめてから決める"],a:2,
+  e:["体調不良は減圧症のリスクを上げ、鼻づまりは耳抜き不良や浮上時のリバースブロックの原因になります。必ず申告を。","中止・変更の判断は勇気ではなく手順です。「せっかく来たから」が最も危険な動機になります。","市販薬には眠気や脱水を招くものがあり、自己判断での服用潜水は避けます。","前日の飲酒と睡眠は当日のコンディションを直撃します。10年ぶりなら特に、前夜は早めに休みましょう。"]}
+];
+
+const app = document.getElementById('app');
+const marker = document.getElementById('marker');
+const read = document.getElementById('read');
+const track = document.getElementById('track');
+const MAX_DEPTH = 30;
+document.getElementById('total').textContent = QUESTIONS.length;
+
+let order = QUESTIONS.map((_, i) => i);
+let pos = 0;
+let wrongIdx = [];
+let correct = 0;
+let byTag = {};
+let reviewing = false;
+
+function buildTicks(){
+  for(let d = 0; d <= MAX_DEPTH; d += 5){
+    const el = document.createElement('div');
+    el.className = 'tick';
+    el.style.top = (d / MAX_DEPTH * 100) + '%';
+    el.innerHTML = '<span>' + d + '</span>';
+    track.appendChild(el);
+  }
+}
+buildTicks();
+
+function setDepth(ratio){
+  var deep = document.getElementById('bgdeep');
+  if(deep) deep.style.opacity = ratio.toFixed(3);
+  if(marker) marker.style.top = (ratio * 100) + '%';
+  if(read) read.textContent = Math.round(ratio * MAX_DEPTH) + 'm';
+}
+
+function render(){
+  if(pos >= order.length){ return renderResult(); }
+  const qi = order[pos];
+  const item = QUESTIONS[qi];
+  setDepth(pos / order.length);
+
+  app.innerHTML = '';
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.innerHTML =
+    '<span>' + String(pos + 1).padStart(2, '0') + ' / ' + String(order.length).padStart(2, '0') + '</span>' +
+    '<span class="chip">' + item.t + '</span>' +
+    (reviewing ? '<span class="chip">復習</span>' : '');
+  app.appendChild(meta);
+
+  const q = document.createElement('p');
+  q.className = 'q';
+  q.textContent = item.q;
+  app.appendChild(q);
+
+  const list = document.createElement('div');
+  list.className = 'opts';
+  const keys = ['A','B','C','D'];
+  item.o.forEach((text, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.type = 'button';
+    b.innerHTML = '<span class="key">' + keys[i] + '</span><span>' + text + '</span>';
+    b.addEventListener('click', () => answer(qi, i, list, item));
+    list.appendChild(b);
+  });
+  app.appendChild(list);
+
+  const fb = document.createElement('div');
+  fb.className = 'fb';
+  fb.id = 'fb';
+  app.appendChild(fb);
+
+  window.scrollTo(0, 0);
+}
+
+function answer(qi, choice, list, item){
+  const buttons = [...list.children];
+  if(buttons[0].classList.contains('locked')) return;
+
+  const isOk = choice === item.a;
+  buttons.forEach((b, i) => {
+    b.classList.add('locked');
+    if(i === item.a) b.classList.add('correct');
+    if(i === choice && !isOk) b.classList.add('wrong');
+  });
+
+  byTag[item.t] = byTag[item.t] || {ok: 0, n: 0};
+  if(!reviewing){
+    byTag[item.t].n++;
+    if(isOk){ correct++; byTag[item.t].ok++; }
+    else wrongIdx.push(qi);
+  } else if(!isOk){
+    wrongIdx.push(qi);
+  }
+
+  const fb = document.getElementById('fb');
+  fb.className = 'fb show ' + (isOk ? 'ok' : 'ng');
+  const keys = ['A','B','C','D'];
+  fb.innerHTML =
+    '<p class="verdict">' + (isOk ? '正解' : '不正解　正解は ' + keys[item.a]) + '</p>' +
+    item.e.map(p => '<p>' + p + '</p>').join('');
+
+  const next = document.createElement('button');
+  next.className = 'next';
+  next.type = 'button';
+  next.textContent = (pos + 1 >= order.length) ? '結果を見る' : '次の問題へ';
+  next.addEventListener('click', () => { pos++; render(); });
+  fb.appendChild(next);
+  next.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+}
+
+function renderResult(){
+  setDepth(1);
+  const pct = Math.round(correct / QUESTIONS.length * 100);
+  const missed = [...new Set(wrongIdx)];
+
+  let msg;
+  if(pct >= 90) msg = '仕上がっています。当日は浮力と残圧の確認に集中しましょう。';
+  else if(pct >= 70) msg = '勘は戻っています。間違えた分野だけ潜る前にもう一周を。';
+  else msg = 'ブランクぶんの取りこぼしがあります。復習してから当日を迎えましょう。';
+
+  app.innerHTML =
+    '<div class="eyebrow">Result</div>' +
+    '<div class="score">' + correct + '<small> / ' + QUESTIONS.length + '</small></div>' +
+    '<p class="sub">' + msg + '</p>' +
+    '<ul class="bytag">' +
+      Object.keys(byTag).map(t =>
+        '<li><span>' + t + '</span><b>' + byTag[t].ok + '/' + byTag[t].n + '</b></li>'
+      ).join('') +
+    '</ul>';
+
+  if(missed.length){
+    const b = document.createElement('button');
+    b.className = 'next';
+    b.type = 'button';
+    b.textContent = '間違えた ' + missed.length + ' 問をやり直す';
+    b.addEventListener('click', () => {
+      order = missed; pos = 0; wrongIdx = []; reviewing = true; render();
+    });
+    app.appendChild(b);
+  }
+
+  const again = document.createElement('button');
+  again.className = 'next ghost';
+  again.type = 'button';
+  again.textContent = '最初から';
+  again.addEventListener('click', () => {
+    order = QUESTIONS.map((_, i) => i);
+    pos = 0; correct = 0; wrongIdx = []; byTag = {}; reviewing = false;
+    render();
+  });
+  app.appendChild(again);
+
+  const memo = document.createElement('div');
+  memo.className = 'memo';
+  memo.innerHTML =
+    '<h2>当日の要点メモ</h2>' +
+    '<ul>' +
+    '<li>ウエイトは以前の記憶で決めない。1本目の前に水面で取り直す。</li>' +
+    '<li>浮上は毎分10m以内。BCの空気は小刻みに抜き、必ず5mで3分の安全停止。</li>' +
+    '<li>耳抜きは浅いところから頻繁に。痛くなったら少し戻る。</li>' +
+    '<li>残圧はこまめに確認し、50気圧を目安に早めの申告。消費が早くても恥ずかしいことではない。</li>' +
+    '<li>ビーチエントリーは後ろ向きに、波を見ながら。レギュレーターは口にくわえたまま。</li>' +
+    '<li>体調・不安は潜る前に必ずインストラクターへ。中止と変更は勇気ではなく手順。</li>' +
+    '<li>帰路の高所移動と飛行機は24時間の目安を意識する。</li>' +
+    '</ul>' +
+    '<p class="foot">出典：STARSネットダイバースクール オープンウォーターダイバーマニュアル（net-diver.org）を基に作成。数値はSTARS基準のため、他団体の教材と異なる場合があります。実際の判断は必ず当日のインストラクターの指示に従ってください。</p>';
+  app.appendChild(memo);
+
+  window.scrollTo(0, 0);
+}
+
+render();
+</script>
+</body>
+</html>
