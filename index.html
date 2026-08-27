@@ -157,6 +157,32 @@
   }
   .bytag b{font:600 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink-dim)}
 
+  /* ---- ツールバー & 問題グリッド ---- */
+  .bar{display:flex; gap:8px; margin:14px 0 0}
+  .bar button{
+    flex:1; min-height:44px; padding:0 10px;
+    background:var(--card); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px;
+    font-family:inherit; font-size:13px; font-weight:600; letter-spacing:.04em;
+    cursor:pointer;
+  }
+  .bar button.on{border-color:var(--ok); color:var(--ok)}
+  .grid{
+    display:none; grid-template-columns:repeat(6,1fr); gap:7px;
+    margin-top:12px; padding-top:14px; border-top:1px solid var(--line);
+  }
+  .grid.open{display:grid}
+  .grid button{
+    min-height:42px; padding:0;
+    background:var(--card); color:var(--ink-dim);
+    border:1px solid var(--line); border-radius:8px;
+    font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    cursor:pointer;
+  }
+  .grid button.ok{border-color:var(--ok); color:var(--ok); background:rgba(53,196,168,.13)}
+  .grid button.ng{border-color:var(--ng); color:var(--ng); background:rgba(242,112,90,.12)}
+  .grid button.cur{outline:2px solid var(--ink); outline-offset:1px; color:var(--ink)}
+
   .memo{margin-top:34px; border-top:1px solid var(--line); padding-top:22px}
   .memo h2{font-size:15px; letter-spacing:.04em; margin:0 0 14px}
   .memo ul{margin:0; padding-left:20px}
@@ -184,6 +210,12 @@
     <h1>ダイビング復習クイズ</h1>
     <p class="sub">8月29日・西伊豆 浮島海岸／全<span id="total">30</span>問・4択</p>
   </header>
+  <div class="bar">
+    <button type="button" id="btnOrder" class="on">順番どおり</button>
+    <button type="button" id="btnRandom">ランダム</button>
+    <button type="button" id="btnGrid">一覧</button>
+  </div>
+  <div class="grid" id="grid"></div>
   <main id="app"><p class="sub">読み込み中です。この表示のまま変わらない場合は、Safariでファイルを開き直してください。</p></main>
 </div>
 
@@ -307,22 +339,58 @@ const QUESTIONS = [
 
  {t:"プランとルール",q:"当日、寝不足・二日酔い・軽い風邪気味だった場合の判断として適切なのは？",
   o:["浅い深度なら問題ないので予定通り潜る","市販薬を飲んで潜る","インストラクターに正直に申告し、中止や内容変更を相談する","水中で体調を確かめてから決める"],a:2,
-  e:["体調不良は減圧症のリスクを上げ、鼻づまりは耳抜き不良や浮上時のリバースブロックの原因になります。必ず申告を。","中止・変更の判断は勇気ではなく手順です。「せっかく来たから」が最も危険な動機になります。","市販薬には眠気や脱水を招くものがあり、自己判断での服用潜水は避けます。","前日の飲酒と睡眠は当日のコンディションを直撃します。10年ぶりなら特に、前夜は早めに休みましょう。"]}
+  e:["体調不良は減圧症のリスクを上げ、鼻づまりは耳抜き不良や浮上時のリバースブロックの原因になります。必ず申告を。","中止・変更の判断は勇気ではなく手順です。「せっかく来たから」が最も危険な動機になります。","市販薬には眠気や脱水を招くものがあり、自己判断での服用潜水は避けます。","前日の飲酒と睡眠は当日のコンディションを直撃します。10年ぶりなら特に、前夜は早めに休みましょう。"]},
+
+ {t:"ハンドサイン",q:"水中で残圧を尋ねられた。答え方として適切なのは？",
+  o:["首を横に振って「まだ大丈夫」と伝える","残圧計を相手に見せるか、指のサインで数値を伝える","OKサインだけ返す","何もせず潜り続ける"],a:1,
+  e:["残圧計を直接見せるか、指のサインで具体的な数値を伝えます。「大丈夫」という主観ではなく、数値そのものを共有するのが原則です。","数値の示し方は、片手を握って100を示し、続けて十の位を指で示す方式が一般的（150なら、こぶし→指5本）。1桁ずつ示す流儀もあります。","サインの流儀はショップごとに差があります。エントリー前のブリーフィングで必ず確認してください。「残圧はどう伝えますか」と聞くのは当然の質問です。"]},
+
+ {t:"ハンドサイン",q:"バディやガイドが、人差し指をもう片方の手のひらに当てる仕草をした。何を意味するか？",
+  o:["ここで止まれ","残圧はどれくらいか","浮上しよう","前に進め"],a:1,
+  e:["残圧を尋ねるサインです。指2本を胸やタンク側に当てる形など、いくつかの流儀があります。","聞かれる前に自分から定期的に伝えるのが理想。ガイドは全員の残圧を把握したがっています。","残りが少ないことを隠さないこと。早めに伝えればガイドがコースを調整できます。10年ぶりで消費が早くなるのは当然です。"]},
+
+ {t:"ハンドサイン",q:"水中で「OK・問題なし」を伝えるサインは？",
+  o:["親指を立てて上に向ける","親指と人差し指で輪を作る","手のひらを下に向けて左右に振る","こぶしを握って前に突き出す"],a:1,
+  e:["親指と人差し指で輪を作るのがOKサインです。相手から出されたら、必ず同じサインで返します。","親指を立てるのは「浮上しよう」。陸上のグッドサインのつもりで使うと、浮上開始と受け取られます。","距離があって指が見えにくいときは、両腕で頭上に大きな輪を作る方法もあります。"]},
+
+ {t:"ハンドサイン",q:"親指を下に向けるサインの意味は？",
+  o:["よくない・不調","潜降しよう","下を見て","減速しろ"],a:1,
+  e:["「潜降しよう」という指示です。親指を上に向ける「浮上しよう」と対になっています。","陸上の感覚では「よくない」の意味に取りがちですが、水中では方向を示すサインです。","不調を伝えるのは、手のひらを下に向けて左右に振るサインです。"]},
+
+ {t:"ハンドサイン",q:"「何かおかしい・調子が悪い」を伝えるサインは？",
+  o:["手のひらを下に向け、左右に振る","こぶしを胸に当てる","両手を頭上で交差させる","指を回転させる"],a:0,
+  e:["手のひらを下に向けて左右に振ります。続けて不調な箇所（耳、頭など）を指し示すと伝わります。","少しでも違和感があれば、我慢せず早い段階で出してください。水中では小さな不調が急速に悪化します。","相手からこのサインが出たら、まず近づいて目を合わせ、落ち着かせることが先決です。"]},
+
+ {t:"ハンドサイン",q:"「エアがない・空気が切れた」を伝えるサインは？",
+  o:["タンクを叩く","手を喉に当てて横に引く","レギュレーターを指差す","両手を大きく振る"],a:1,
+  e:["手を喉に当てて横に引く動作です。緊急度が最も高いサインなので、大きくはっきり出します。","出されたら、すぐ自分のオクトパスを渡し、相手をつかんで落ち着かせ、一緒にゆっくり浮上します。","そもそもこのサインを出す状況を作らないこと。残圧50気圧を目安に、早めに浮上を開始します。"]}
 ];
 
 const app = document.getElementById('app');
 const marker = document.getElementById('marker');
 const read = document.getElementById('read');
 const track = document.getElementById('track');
+const grid = document.getElementById('grid');
+const btnOrder = document.getElementById('btnOrder');
+const btnRandom = document.getElementById('btnRandom');
+const btnGrid = document.getElementById('btnGrid');
 const MAX_DEPTH = 30;
 document.getElementById('total').textContent = QUESTIONS.length;
 
 let order = QUESTIONS.map((_, i) => i);
 let pos = 0;
-let wrongIdx = [];
-let correct = 0;
-let byTag = {};
+let results = {};      // qi -> true(正解) / false(不正解)
+let randomMode = false;
 let reviewing = false;
+
+function shuffle(a){
+  const r = a.slice();
+  for(let i = r.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
 
 function buildTicks(){
   for(let d = 0; d <= MAX_DEPTH; d += 5){
@@ -336,17 +404,56 @@ function buildTicks(){
 buildTicks();
 
 function setDepth(ratio){
-  var deep = document.getElementById('bgdeep');
+  const deep = document.getElementById('bgdeep');
   if(deep) deep.style.opacity = ratio.toFixed(3);
   if(marker) marker.style.top = (ratio * 100) + '%';
   if(read) read.textContent = Math.round(ratio * MAX_DEPTH) + 'm';
 }
+
+function buildGrid(){
+  grid.innerHTML = '';
+  order.forEach((qi, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = i + 1;
+    if(results[qi] === true) b.className = 'ok';
+    if(results[qi] === false) b.className = 'ng';
+    if(i === pos) b.className = (b.className + ' cur').trim();
+    b.addEventListener('click', () => { pos = i; render(); });
+    grid.appendChild(b);
+  });
+}
+
+function startSet(list, isReview){
+  order = list;
+  pos = 0;
+  reviewing = !!isReview;
+  render();
+}
+
+btnOrder.addEventListener('click', () => {
+  randomMode = false;
+  btnOrder.classList.add('on'); btnRandom.classList.remove('on');
+  results = {};
+  startSet(QUESTIONS.map((_, i) => i), false);
+});
+btnRandom.addEventListener('click', () => {
+  randomMode = true;
+  btnRandom.classList.add('on'); btnOrder.classList.remove('on');
+  results = {};
+  startSet(shuffle(QUESTIONS.map((_, i) => i)), false);
+});
+btnGrid.addEventListener('click', () => {
+  grid.classList.toggle('open');
+  btnGrid.classList.toggle('on');
+});
 
 function render(){
   if(pos >= order.length){ return renderResult(); }
   const qi = order[pos];
   const item = QUESTIONS[qi];
   setDepth(pos / order.length);
+  buildGrid();
 
   app.innerHTML = '';
 
@@ -355,7 +462,8 @@ function render(){
   meta.innerHTML =
     '<span>' + String(pos + 1).padStart(2, '0') + ' / ' + String(order.length).padStart(2, '0') + '</span>' +
     '<span class="chip">' + item.t + '</span>' +
-    (reviewing ? '<span class="chip">復習</span>' : '');
+    (reviewing ? '<span class="chip">復習</span>' : '') +
+    (randomMode ? '<span class="chip">ランダム</span>' : '');
   app.appendChild(meta);
 
   const q = document.createElement('p');
@@ -385,7 +493,7 @@ function render(){
 }
 
 function answer(qi, choice, list, item){
-  const buttons = [...list.children];
+  const buttons = Array.prototype.slice.call(list.children);
   if(buttons[0].classList.contains('locked')) return;
 
   const isOk = choice === item.a;
@@ -395,14 +503,8 @@ function answer(qi, choice, list, item){
     if(i === choice && !isOk) b.classList.add('wrong');
   });
 
-  byTag[item.t] = byTag[item.t] || {ok: 0, n: 0};
-  if(!reviewing){
-    byTag[item.t].n++;
-    if(isOk){ correct++; byTag[item.t].ok++; }
-    else wrongIdx.push(qi);
-  } else if(!isOk){
-    wrongIdx.push(qi);
-  }
+  results[qi] = isOk;
+  buildGrid();
 
   const fb = document.getElementById('fb');
   fb.className = 'fb show ' + (isOk ? 'ok' : 'ng');
@@ -422,8 +524,20 @@ function answer(qi, choice, list, item){
 
 function renderResult(){
   setDepth(1);
-  const pct = Math.round(correct / QUESTIONS.length * 100);
-  const missed = [...new Set(wrongIdx)];
+  buildGrid();
+
+  const answered = order.filter(qi => qi in results);
+  const correct = answered.filter(qi => results[qi]).length;
+  const missed = answered.filter(qi => !results[qi]);
+  const pct = answered.length ? Math.round(correct / answered.length * 100) : 0;
+
+  const byTag = {};
+  answered.forEach(qi => {
+    const t = QUESTIONS[qi].t;
+    byTag[t] = byTag[t] || {ok: 0, n: 0};
+    byTag[t].n++;
+    if(results[qi]) byTag[t].ok++;
+  });
 
   let msg;
   if(pct >= 90) msg = '仕上がっています。当日は浮力と残圧の確認に集中しましょう。';
@@ -432,7 +546,7 @@ function renderResult(){
 
   app.innerHTML =
     '<div class="eyebrow">Result</div>' +
-    '<div class="score">' + correct + '<small> / ' + QUESTIONS.length + '</small></div>' +
+    '<div class="score">' + correct + '<small> / ' + answered.length + '</small></div>' +
     '<p class="sub">' + msg + '</p>' +
     '<ul class="bytag">' +
       Object.keys(byTag).map(t =>
@@ -446,7 +560,8 @@ function renderResult(){
     b.type = 'button';
     b.textContent = '間違えた ' + missed.length + ' 問をやり直す';
     b.addEventListener('click', () => {
-      order = missed; pos = 0; wrongIdx = []; reviewing = true; render();
+      missed.forEach(qi => { delete results[qi]; });
+      startSet(randomMode ? shuffle(missed) : missed, true);
     });
     app.appendChild(b);
   }
@@ -456,9 +571,9 @@ function renderResult(){
   again.type = 'button';
   again.textContent = '最初から';
   again.addEventListener('click', () => {
-    order = QUESTIONS.map((_, i) => i);
-    pos = 0; correct = 0; wrongIdx = []; byTag = {}; reviewing = false;
-    render();
+    results = {};
+    const all = QUESTIONS.map((_, i) => i);
+    startSet(randomMode ? shuffle(all) : all, false);
   });
   app.appendChild(again);
 
@@ -471,11 +586,12 @@ function renderResult(){
     '<li>浮上は毎分10m以内。BCの空気は小刻みに抜き、必ず5mで3分の安全停止。</li>' +
     '<li>耳抜きは浅いところから頻繁に。痛くなったら少し戻る。</li>' +
     '<li>残圧はこまめに確認し、50気圧を目安に早めの申告。消費が早くても恥ずかしいことではない。</li>' +
+    '<li>ハンドサインの流儀はショップごとに違う。ブリーフィングで必ず確認する。</li>' +
     '<li>ビーチエントリーは後ろ向きに、波を見ながら。レギュレーターは口にくわえたまま。</li>' +
     '<li>体調・不安は潜る前に必ずインストラクターへ。中止と変更は勇気ではなく手順。</li>' +
     '<li>帰路の高所移動と飛行機は24時間の目安を意識する。</li>' +
     '</ul>' +
-    '<p class="foot">出典：STARSネットダイバースクール オープンウォーターダイバーマニュアル（net-diver.org）を基に作成。数値はSTARS基準のため、他団体の教材と異なる場合があります。実際の判断は必ず当日のインストラクターの指示に従ってください。</p>';
+    '<p class="foot">出典：STARSネットダイバースクール オープンウォーターダイバーマニュアル（net-diver.org）を基に作成。数値はSTARS基準のため、他団体の教材と異なる場合があります。ハンドサインは団体・ショップにより差異があります。実際の判断は必ず当日のインストラクターの指示に従ってください。</p>';
   app.appendChild(memo);
 
   window.scrollTo(0, 0);
